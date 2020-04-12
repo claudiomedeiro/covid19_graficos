@@ -26,6 +26,13 @@ __email__ = "cjinfo@gmail.com"
 
     necessário instalar o tk e fazer o import
     $ sudo apt-get install python3-tk
+    
+    TODO: importar direto do XLSX
+    TODO: Plotar várias visões na mesma tela
+    TODO: Ordenar legenda por números de casos no dia X
+    TODO: Criar linhas de tendência global, top-3 e país de foco do estudo
+    TODO: Permitir usuário escolher país e dias de corte (inicial e final), inclusive a partir de quantos casos 
+    de um mesmo país deseja avaliar    
 """
 
 
@@ -33,18 +40,16 @@ import tkinter      # precisa importar esta biblioteca senão não apresenta
 import matplotlib
 matplotlib.use('TkAgg')
 
-# vet_numeros = []    # TODO: apagar depois
 dic_paises = {}
-
-int_qtde_casos_considerar = 100     # TODO: atualmente o default é considerar apenas a partir do dia com 100 casos no país,
-                                    # mas o objetivo é permitir que o operador escolha também esse número
-
+str_separador = ";"
 vet_paises_considerar = []
 vet_dias_plotar = []
 int_dias_pais_referencia = 0
+int_qtde_casos_considerar = 100     # TODO: atualmente o default é considerar apenas a partir do dia com 100 casos no país,
+                                    # mas o objetivo é permitir que o operador escolha também esse número
 
 
-def plotar_dimensao(int_dimensao=1, str_pais_referencia="Brazil", int_dia_depois_do_100th=0):
+def plotar_dimensao(int_dimensao=1, str_pais_referencia="Brazil", int_dia_depois_do_100th=-1):
     """
     As dimensões possíveis são as seguintes:
     1: "CasosAcumulados"
@@ -67,7 +72,7 @@ def plotar_dimensao(int_dimensao=1, str_pais_referencia="Brazil", int_dia_depois
 
     int_dias_pais_referencia = len(dic_paises[str_pais_referencia]["valores"])
 
-    if (int_dia_depois_do_100th < int_dias_pais_referencia) and (int_dia_depois_do_100th > 0):
+    if (int_dia_depois_do_100th < int_dias_pais_referencia) and (int_dia_depois_do_100th > -1):
         print("Considerando o dia indicado")
         int_dias_pais_referencia = int_dia_depois_do_100th
     else:
@@ -126,7 +131,6 @@ def plotar_dimensao(int_dimensao=1, str_pais_referencia="Brazil", int_dia_depois
     # axes.set_xticklabels([])
     # axes.set_yticklabels([])
 
-
     mpl_plotar.grid()
     mpl_plotar.show()
     return
@@ -135,9 +139,9 @@ def plotar_dimensao(int_dimensao=1, str_pais_referencia="Brazil", int_dia_depois
 def retorna_coluna_matriz(vet_matriz, int_coluna):
     """
     Recebe uma matriz e retorna a coluna indicada
-    :param vet_matriz:
-    :param int_coluna:
-    :return:
+    :param vet_matriz: uma matriz de 02 dimensões
+    :param int_coluna: indicador de que coluna da matriz deve ser extraída
+
     >>> retorna_coluna_matriz([[1, 2, 3], [4, 5, 6], [7, 8, 9]], 1)
     [2, 5, 8]
     """
@@ -171,10 +175,10 @@ def abre_arquivo(str_arquivo):
 def simbolos_a_esquerda(str_texto, int_tamanho, str_simbolo="0"):
     """
     Recebe um texto, e o devolve no tamanho indicado, preenchido com o símbolo indicado à esquerda
-    :param str_texto:
-    :param int_tamanho:
-    :param str_simbolo:
-    :return:
+    :param str_texto: o texto a ser modificado
+    :param int_tamanho: o tamanho que o texto a ser modificado deverá ter depois da transformação
+    :param str_simbolo: o caracter que deverá compor a esquerda do texto, para garantir que o tamanho será cumprido
+    :return str_texto_com_simbolos_a_esquerda: o texto já modificado
 
     >>> simbolos_a_esquerda("4", 3)
     '004'
@@ -186,8 +190,8 @@ def simbolos_a_esquerda(str_texto, int_tamanho, str_simbolo="0"):
 def converte_data(str_data_a_converter):
     """
     Data uma data no formato D/M/AAAA, converte em data formato AAAA-MM-DD
-    :param str_data_a_converter:
-    :return:
+    :param str_data_a_converter: uma data em algum dos formatos 'D/M/AA', 'D/M/AAAA' ou 'DD/MM/AAAA'
+    :return str_data_convertida: Data convertida para o formato 'AAAA-MM-DD'
 
     >>> converte_data("18/4/2020")
     '2020-04-18'
@@ -200,60 +204,6 @@ def converte_data(str_data_a_converter):
     return(str_data_convertida)
 
 
-def importa_csv_numeros(str_nome_arquivo, vet_schema, str_separador=";"):
-    """Acrescenta o conteudo de 'vet_arquivo' em uma estrutura de dicionário:
-
-    O leiaute do arquivo de entrada deve ser como segue:
-
-    dateRep;day;month;year;cases;deaths;countriesAndTerritories;geoId;countryterritoryCode;popData2018;DataNumerica;CasosAcumulados;MortesAcumuladas;DiasDesdeCaso100;População;CasosRefPopulacao;MortesRefCasos
-    4/4/2020;4;4;2020;32425;1104;United_States_of_America;US;USA;327167434;43925;277965;7157;33;331.002.651;0,08398%;2,57478%
-    3/4/2020;3;4;2020;28819;915;United_States_of_America;US;USA;327167434;43924;245540;6053;32;331.002.651;0,07418%;2,46518%
-    2/4/2020;2;4;2020;27103;1059;United_States_of_America;US;USA;327167434;43923;216721;5138;31;331.002.651;0,06547%;2,37079%
-    """
-
-    vet_arquivo = abre_arquivo(str_nome_arquivo)
-    vet_retorno = []
-
-    for int_pos in range(1, len(vet_arquivo), 1):
-        vet_campos = vet_arquivo[int_pos].split(str_separador)
-
-        # Exclui o '\n' do ultimo campo
-        vet_campos[-1] = vet_campos[-1].replace("\n", "")
-        vet_campos[0] = converte_data(vet_campos[0])
-        vet_campos[-1] = vet_campos[-1].replace(",", ".").replace("%", "")
-        vet_campos[-2] = vet_campos[-2].replace(",", ".").replace("%", "")
-        vet_campos[-3] = vet_campos[-3].replace(",", ".")
-        vet_retorno.append(vet_campos)
-
-    return(vet_retorno)
-
-
-def importa_csv_populacao(str_nome_arquivo, vet_schema, str_separador=";"):
-    """Acrescenta o conteudo de 'vet_arquivo' em uma estrutura de dicionário:
-
-    O leiaute do arquivo de entrada deve ser como segue:
-
-    countriesAndTerritories;População
-    Afghanistan;38928346
-    Albania;2877797
-    Algeria;43851044
-    """
-
-    vet_arquivo = abre_arquivo(str_nome_arquivo)
-    dic_retorno = {}
-
-    for int_pos in range(1, len(vet_arquivo), 1):
-        vet_campos = vet_arquivo[int_pos].split(str_separador)
-
-        # Exclui o '\n' do ultimo campo
-        vet_campos[-1] = vet_campos[-1].replace("\n", "")
-        dic_retorno[vet_campos[0]] = int(vet_campos[1])
-        # vet_retorno.append(vet_campos)
-
-    return(dic_retorno)
-
-
-
 def main():
     """
     TODO: Ordenar os países por maior volume no mesmo dia que o Brazil está
@@ -262,6 +212,7 @@ def main():
     # global vet_numeros  # TODO: apagar depois
     global dic_paises  # TODO: apagar depois
     global int_qtde_casos_considerar
+    global str_separador
 
     str_nome_arquivo_populacao = "world_population_20200405.csv"
     vet_schema_populacao = ["countriesAndTerritories", "Populacao"]
@@ -288,10 +239,21 @@ def main():
     # TODO: criar o bloco que importa os dois arquivos originais e trata as relações entre eles para ter população de referência
 
     # le o arquivo de tamanho da populaçã dos países
-    dic_populacao = importa_csv_populacao(str_nome_arquivo_populacao, vet_schema_populacao)
-    # print("dic_populacao: {}".format(dic_populacao))
+    vet_arquivo = abre_arquivo(str_nome_arquivo)
+    dic_populacao = {}
+    for int_pos in range(1, len(vet_arquivo), 1):
+        vet_campos = vet_arquivo[int_pos].split(str_separador)
+        vet_campos[-1] = vet_campos[-1].replace("\n", "")       # Exclui o '\n' do ultimo campo
+        dic_populacao[vet_campos[0]] = int(vet_campos[1])
 
-    vet_numeros = importa_csv_numeros(str_nome_arquivo, vet_schema)
+    # importa o CSV com os números de casos e de mortes por páis
+    vet_arquivo = abre_arquivo(str_nome_arquivo)
+    vet_numeros = []
+    for int_pos in range(1, len(vet_arquivo), 1):
+        vet_campos = vet_arquivo[int_pos].split(str_separador)
+        vet_campos[-1] = vet_campos[-1].replace("\n", "")  # Exclui o '\n' do ultimo campo
+        vet_campos[0] = converte_data(vet_campos[0])  # Converte data no formato 'AAAA-MM-DD' para uso futuro
+        vet_numeros.append(vet_campos)
 
     # estrutura do dic_paises
     # dic_paises = {
@@ -309,7 +271,7 @@ def main():
     #                     ["dateRep",
     #                       "cases",
     #                       "deaths"],
-                        # ["2020-04-04", 1146, 60]
+    #                     ["2020-04-04", 1146, 60]
     #                 ]
     #     }
     # }
@@ -358,7 +320,6 @@ def main():
                     flo_casos_ref_populacao = 0.0
                     print("Erro de divisão de {} casos pela população de {}.\nCarregado valor zero para o país {} no {}º dia.".format(int_casos_acumulados, dic_paises[str_pais]["populacao"], str_pais, int_dias_100th))
 
-
                 # tenta calcular a proporcao entre mortes e casos confirmados
                 try:
                     flo_mortes_ref_casos = int_mortes_acumuladas / int_casos_acumulados * 100
@@ -366,7 +327,6 @@ def main():
                 except:
                     flo_mortes_ref_casos = 0.0
                     print("Erro de divisão de {} mortes por {} casos.\nCarregado valor zero para o país {} no {}º dia.".format(int_mortes_acumuladas, int_casos_acumulados, str_pais, int_dias_100th))
-
 
                 dic_paises[str_pais]["valores"].append([int_dias_100th, int_casos_acumulados, int_mortes_acumuladas,
                                                         flo_casos_ref_populacao, flo_mortes_ref_casos, vet_aux[0]])
