@@ -3,38 +3,15 @@
 
 __author__ = "Claudio Jorge Severo Medeiro"
 __email__ = "cjinfo@gmail.com"
-"""
-    Download planilha com casos mundiais por país em https://www.ecdc.europa.eu/sites/default/files/documents/COVID-19-geographic-disbtribution-worldwide-AAAA-MM-DD.xlsx
-    
-    exemplo:
-    >>> wget https://www.ecdc.europa.eu/sites/default/files/documents/COVID-19-geographic-disbtribution-worldwide-2020-03-28.xlsx
-
-    Salvar planilha como .csv na raiz do diretório do programa e sem a data no nome
-    exemplo: COVID-19-geographic-disbtribution-worldwide.xlsx
-
-    Os volumes populacionais, por país, foram obtidos no site (https://www.worldometers.info/world-population/population-by-country/), 
-    feito padronização dos nomes dos países com os nomes que o COVID-19-geographic-disbtribution-worldwide-2020-03-28.xlsx 
-    traz e salvo na raiz do diretório do programa, apenas com as 02 colunas de interesse, e o nome  
-
-    Seguintes países não consta população então fiz a pesquisa individualmente na internet:
-
-    Palestine (5.073.681): https://www.worldometers.info/world-population/state-of-palestine-population/
-    Kosovo (1.793.000): https://en.wikipedia.org/wiki/Demographics_of_Kosovo
-    Jersey (107.700): https://www.gov.je/Government/JerseyInFigures/Population/Pages/PopulationProjections.aspx
-    Guernsey (67.052): https://www.cia.gov/library/publications/the-world-factbook/geos/print_gk.html
-    Bonaire, Saint Eustatius and Saba (25.157): https://www.paho.org/salud-en-las-americas-2017/?page_id=1694
-
-    necessário instalar o tk e fazer o import
-    $ sudo apt-get install python3-tk
-    
+"""   
     TODO: importar direto do XLSX
-    TODO: Plotar várias visões na mesma tela
+    TODO: Plotar 04 visões na mesma tela
     TODO: Ordenar legenda por números de casos no dia X
     TODO: Criar linhas de tendência global, top-3 e país de foco do estudo
     TODO: Permitir usuário escolher país e dias de corte (inicial e final), inclusive a partir de quantos casos 
-    de um mesmo país deseja avaliar    
+    de um mesmo país deseja avaliar
+    TODO: Ordenar os países por maior volume no mesmo dia que o país de referência está       
 """
-
 
 import tkinter      # precisa importar esta biblioteca senão não apresenta
 import matplotlib
@@ -49,26 +26,31 @@ int_qtde_casos_considerar = 100     # TODO: atualmente o default é considerar a
                                     # mas o objetivo é permitir que o operador escolha também esse número
 
 
-def plotar_dimensao(int_dimensao=1, str_pais_referencia="Brazil", int_dia_depois_do_100th=-1):
+def plotar_graficos(int_dimensao=1, str_pais_referencia="Brazil", int_dia_depois_do_100th=-1):
     """
-    As dimensões possíveis são as seguintes:
+    Dimensões possíveis:
     1: "CasosAcumulados"
     2: "MortesAcumuladas"
     3: "Casos acumulados divididos pela população"
     4: "Mortes divididas pelo número de casos acumulados"
-    :return:
     """
     
     global dic_paises
     global vet_paises_considerar, vet_dias_plotar, int_dias_pais_referencia # TODO: apagar depois
 
     vet_simbolos = ['.', ',', 'o', 'v', '^', '<', '>', '1', '2', '3', '4', '8', 's', 'p', 'P', '*', 'h', 'H', '+', 'x', 'X', 'D', 'd', '|']
-    # vet_estilo = ['-', '--', '-.', ':', 'None', ' ', '', 'solid', 'dashed', 'dashdot', 'dotted']
-    #
 
-    mpl_plotar = matplotlib.pyplot
+    vet_simbolos_plotar = []        # vai garantir que o país tenha o mesmo símbolo em todos os subplots
+    vet_plotar = [[], [], [], []]   # vai armazenar as listas de valores de y de cada país a ser exibido no gráfico
+    vet_paises_considerar = []      # relação dos países que serão plotados
 
-    vet_paises_considerar = []
+    vet_titulos_graficos = []
+    vet_titulos_graficos.append("Casos acumulados")
+    vet_titulos_graficos.append("Mortes acumuladas")
+    vet_titulos_graficos.append("Casos acumulados ref População")
+    vet_titulos_graficos.append("Mortes ref Casos Acumulados")
+
+    int_dimensoes = 2   # define quantas dimensões devem ser consideradas/plotadas
 
     int_dias_pais_referencia = len(dic_paises[str_pais_referencia]["valores"])
 
@@ -80,22 +62,6 @@ def plotar_dimensao(int_dimensao=1, str_pais_referencia="Brazil", int_dia_depois
 
     vet_dias_plotar = retorna_coluna_matriz(dic_paises[str_pais_referencia]["valores"], 0)[:int_dias_pais_referencia]
 
-    if int_dimensao == 1:
-        str_titulo = "Casos acumulados no {}".format(str_pais_referencia)
-    elif int_dimensao == 2:
-        str_titulo = "Mortes acumuladas no {}".format(str_pais_referencia)
-    elif int_dimensao == 3:
-        str_titulo = "Casos acumulados ref População no {}".format(str_pais_referencia)
-    elif int_dimensao == 4:
-        str_titulo = "Mortes ref Casos Acumulados no {}".format(str_pais_referencia)
-    else:
-        print("Dimensão não prevista")
-        return
-
-    mpl_plotar.title(str_titulo)
-
-    int_cont = 0
-    # int_cont_estilo = 0
     for str_pais in dic_paises.keys():
         # só vai plotar países que tem mais ou a mesma quantidade de dias indicados no país de referência
         if len(dic_paises[str_pais]["valores"]) >= int_dias_pais_referencia:
@@ -103,42 +69,41 @@ def plotar_dimensao(int_dimensao=1, str_pais_referencia="Brazil", int_dia_depois
             if dic_paises[str_pais]["valores"][int_dias_pais_referencia - 1] >= dic_paises[str_pais_referencia]["valores"][int_dias_pais_referencia - 1]:
                 vet_paises_considerar.append(str_pais)
                 vet_valores_plotar = retorna_coluna_matriz(dic_paises[str_pais]["valores"][:int_dias_pais_referencia], int_dimensao)
+                vet_simbolos_plotar.append(vet_simbolos[0])
+                vet_simbolos.append(vet_simbolos[0])
+                vet_simbolos.pop(0)
 
-                if str_pais == str_pais_referencia:
-                    # str_simbolo = "v"
-                    str_estilo = "solid"
-                else:
-                    # str_simbolo = ""
-                    str_estilo = "dotted"
+                for int_cont_plotar in range(int_dimensoes):
+                    vet_valores_plotar = retorna_coluna_matriz(
+                        dic_paises[str_pais]["valores"][:int_dias_pais_referencia], int_cont_plotar+1)
+                    vet_plotar[int_cont_plotar].append(vet_valores_plotar)
 
-                mpl_plotar.plot(vet_dias_plotar, vet_valores_plotar, marker=vet_simbolos[int_cont], linestyle=str_estilo)
+                # rotaciona os símbolos
+                vet_simbolos.append(vet_simbolos[0])
+                vet_simbolos.pop(0)
 
-                int_cont += 1
-                if int_cont > len(vet_simbolos):
-                    int_cont = 0
+    fig, axs = matplotlib.pyplot.subplots(int_dimensoes, sharex=True)      # Só o de baixo vai relacionar o eixo X (dias desde marca do Nth)
+    matplotlib.pyplot.suptitle("País de Referência: {}".format(str_pais_referencia))
 
-                # if int_cont_estilo > len(vet_estilo):
-                #     int_cont_estilo = 0
+    for int_cont_plotar in range(int_dimensoes):
+        axs[int_cont_plotar].set_title(vet_titulos_graficos[int_cont_plotar])
+        axs[int_cont_plotar].grid(which='major', linestyle='-', linewidth='0.5', color='red')
+        axs[int_cont_plotar].minorticks_on()    # habilita o grid menor
+        axs[int_cont_plotar].grid(which='minor', linestyle=':', linewidth='0.5', color='black')
 
-                print("\nstr_pais: {}\nvet_dias_plotar: {}\nvalores: {}\nint_dimensao: {}".format(str_pais, vet_dias_plotar, vet_valores_plotar, int_dimensao))
+        for int_cont in range(len(vet_plotar[int_cont_plotar])):
+            axs[int_cont_plotar].plot(vet_dias_plotar, vet_plotar[int_cont_plotar][int_cont], marker=vet_simbolos_plotar[int_cont])
 
-    mpl_plotar.legend(vet_paises_considerar)  # as legendas devem estar em uma lista
-    # mpl_plotar.figure()
+        axs[int_cont_plotar].legend(labels=vet_paises_considerar)
 
-    # axes = mpl_plotar.gca()
-    # axes.set_xlim(0, 30)
-    # axes.set_ylim(0, 1000)
-    # axes.set_xticklabels([])
-    # axes.set_yticklabels([])
+    matplotlib.pyplot.show()
 
-    mpl_plotar.grid()
-    mpl_plotar.show()
     return
 
 
 def retorna_coluna_matriz(vet_matriz, int_coluna):
     """
-    Recebe uma matriz e retorna a coluna indicada
+    Recebe uma matriz bidimensional e retorna a coluna indicada
     :param vet_matriz: uma matriz de 02 dimensões
     :param int_coluna: indicador de que coluna da matriz deve ser extraída
 
@@ -153,8 +118,11 @@ def abre_arquivo(str_arquivo):
     Recebe o nome do arquivo, abre-o, e coloca em um vetor em que cada
     posição é uma linha.
 
-    Retorna no vetor e o último elemento tem um '\n' que depois precisa ser
-    tirado em cada processo específico.
+    :param str_arquivo: Nome do .csv que deverá ser importado
+    :return vet_linhas: Lista contendo cada linha do arquivo de entrada em uma posição, e o último elemento de cada
+    posição tem um '\n' que depois precisa ser tirado em cada processo específico
+
+    TODO: Já retirar o '\n' aqui e devolver só os dados de interesse
     """
 
     str_arquivo = str(str_arquivo)
@@ -166,6 +134,7 @@ def abre_arquivo(str_arquivo):
             fil_arquivo.close()
 
     except IOError:
+        # TODO: Implementar o método 'grava_log' e transformar todos os prints de controle em entradas de log
         # grava_log(("ERRO", "Problemas ao tentar ler o arquivo '" + str_arquivo + "'"))
         print(("ERRO: Problemas ao tentar ler o arquivo '{}'".format(str_arquivo)))
 
@@ -206,8 +175,7 @@ def converte_data(str_data_a_converter):
 
 def main():
     """
-    TODO: Ordenar os países por maior volume no mesmo dia que o Brazil está
-    :return:
+    Coordena a importação dos arquivos e os coloca em estruturas de dicionários a serem utilizados na plotagem
     """
     # global vet_numeros  # TODO: apagar depois
     global dic_paises  # TODO: apagar depois
@@ -236,17 +204,15 @@ def main():
                   "CasosRefPopulacao",
                   "MortesRefCasos"]
 
-    # TODO: criar o bloco que importa os dois arquivos originais e trata as relações entre eles para ter população de referência
-
     # le o arquivo de tamanho da populaçã dos países
     vet_arquivo = abre_arquivo(str_nome_arquivo)
     dic_populacao = {}
     for int_pos in range(1, len(vet_arquivo), 1):
         vet_campos = vet_arquivo[int_pos].split(str_separador)
         vet_campos[-1] = vet_campos[-1].replace("\n", "")       # Exclui o '\n' do ultimo campo
-        dic_populacao[vet_campos[0]] = int(vet_campos[1])
+        dic_populacao[vet_campos[0].replace("_", " ")] = int(vet_campos[1])
 
-    # importa o CSV com os números de casos e de mortes por páis
+    # importa o CSV com os números de casos e de mortes por país
     vet_arquivo = abre_arquivo(str_nome_arquivo)
     vet_numeros = []
     for int_pos in range(1, len(vet_arquivo), 1):
@@ -281,7 +247,7 @@ def main():
         str_data = vet_numero[0]
         int_casos = int(vet_numero[4])
         int_mortes = int(vet_numero[5])
-        str_pais = vet_numero[6]
+        str_pais = vet_numero[6].replace("_", " ")
         vet_valores_originais = [str_data, int_casos, int_mortes]
 
         # garante que o país conste do dicionário e já preenche a população na primeira vez que o país aparece
@@ -331,24 +297,8 @@ def main():
                 dic_paises[str_pais]["valores"].append([int_dias_100th, int_casos_acumulados, int_mortes_acumuladas,
                                                         flo_casos_ref_populacao, flo_mortes_ref_casos, vet_aux[0]])
 
-    plotar_dimensao()   # chama o processo de plotagem com os valores padrões ("Brazil" e "casos acumulados")
-
-
+    plotar_graficos()   # chama o processo de plotagem com os valores padrões ("Brazil" e "casos acumulados")
 
 
 if __name__ == '__main__':
     main()
-
-"""
-Dar uma estudada em séries temporais. A seguir aparentes bons pontos de partida:
-
-01) ler planilhas
-    - volumes
-    - populações (tvz já deixar até fixa)
-    - de-para (tvz já deixar até fixa)
-02) fazer conversões e seleções
-03) agrupar por países
-04) para cada país, chamar uma linha do .plot e add a legenda do país ao .legend
-
-"""
-
