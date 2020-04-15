@@ -4,6 +4,7 @@
 __author__ = "Claudio Jorge Severo Medeiro"
 __email__ = "cjinfo@gmail.com"
 """   
+    TODO: revisar gráfico de casos ref população
     TODO: importar direto do XLSX
     TODO: Plotar 04 visões na mesma tela
     TODO: Ordenar legenda por números de casos no dia X
@@ -18,6 +19,7 @@ import matplotlib
 matplotlib.use('TkAgg')
 
 dic_paises = {}
+dic_populacao = {}
 str_separador = ";"
 vet_paises_considerar = []
 vet_dias_plotar = []
@@ -50,7 +52,7 @@ def plotar_graficos(int_dimensao=1, str_pais_referencia="Brazil", int_dia_depois
     vet_titulos_graficos.append("Casos acumulados ref População")
     vet_titulos_graficos.append("Mortes ref Casos Acumulados")
 
-    int_dimensoes = 2   # define quantas dimensões devem ser consideradas/plotadas
+    int_dimensoes = 4   # define quantas dimensões devem ser consideradas/plotadas
 
     int_dias_pais_referencia = len(dic_paises[str_pais_referencia]["valores"])
 
@@ -76,25 +78,39 @@ def plotar_graficos(int_dimensao=1, str_pais_referencia="Brazil", int_dia_depois
                 for int_cont_plotar in range(int_dimensoes):
                     vet_valores_plotar = retorna_coluna_matriz(
                         dic_paises[str_pais]["valores"][:int_dias_pais_referencia], int_cont_plotar+1)
+
                     vet_plotar[int_cont_plotar].append(vet_valores_plotar)
 
                 # rotaciona os símbolos
                 vet_simbolos.append(vet_simbolos[0])
                 vet_simbolos.pop(0)
 
-    fig, axs = matplotlib.pyplot.subplots(int_dimensoes, sharex=True)      # Só o de baixo vai relacionar o eixo X (dias desde marca do Nth)
+    # TODO: Pensar dinamismo para declarar número de dimensões
+    fig, axs = matplotlib.pyplot.subplots(2, 2)
+    # fig, axs = matplotlib.pyplot.subplots(int_dimensoes, sharex=True)      # Só o de baixo vai relacionar o eixo X (dias desde marca do Nth)
     matplotlib.pyplot.suptitle("País de Referência: {}".format(str_pais_referencia))
 
+    int_cont_linhas = 0
+    int_cont_colunas = 0
     for int_cont_plotar in range(int_dimensoes):
-        axs[int_cont_plotar].set_title(vet_titulos_graficos[int_cont_plotar])
-        axs[int_cont_plotar].grid(which='major', linestyle='-', linewidth='0.5', color='red')
-        axs[int_cont_plotar].minorticks_on()    # habilita o grid menor
-        axs[int_cont_plotar].grid(which='minor', linestyle=':', linewidth='0.5', color='black')
+        axs[int_cont_linhas, int_cont_colunas].set_title(vet_titulos_graficos[int_cont_plotar])
+        axs[int_cont_linhas, int_cont_colunas].grid(which='major', linestyle='-', linewidth='0.5', color='red')
+        axs[int_cont_linhas, int_cont_colunas].minorticks_on()    # habilita o grid menor
+        axs[int_cont_linhas, int_cont_colunas].grid(which='minor', linestyle=':', linewidth='0.5', color='black')
 
         for int_cont in range(len(vet_plotar[int_cont_plotar])):
-            axs[int_cont_plotar].plot(vet_dias_plotar, vet_plotar[int_cont_plotar][int_cont], marker=vet_simbolos_plotar[int_cont])
+            # TODO: avaliar modo de tornar a qtde de dias a serem plotadas dinâmica, e tratar quando qtde disponível menor
+            # plotando apenas os últimos 15 dias
+            axs[int_cont_linhas, int_cont_colunas].plot(vet_dias_plotar[15:], vet_plotar[int_cont_plotar][int_cont][15:], marker=vet_simbolos_plotar[int_cont])
 
-        axs[int_cont_plotar].legend(labels=vet_paises_considerar)
+        # Só plota legenda no primeiro
+        if int_cont_linhas + int_cont_colunas == 0:
+            axs[int_cont_linhas, int_cont_colunas].legend(labels=vet_paises_considerar)
+
+        int_cont_colunas += 1
+        if int_cont_colunas > 1:
+            int_cont_linhas += 1
+            int_cont_colunas = 0
 
     matplotlib.pyplot.show()
 
@@ -177,14 +193,24 @@ def main():
     """
     Coordena a importação dos arquivos e os coloca em estruturas de dicionários a serem utilizados na plotagem
     """
-    # global vet_numeros  # TODO: apagar depois
-    global dic_paises  # TODO: apagar depois
+    global dic_paises  # TODO: avaliar apagar depois
     global int_qtde_casos_considerar
     global str_separador
 
+    # le o arquivo de tamanho da população dos países
     str_nome_arquivo_populacao = "world_population_20200405.csv"
     vet_schema_populacao = ["countriesAndTerritories", "Populacao"]
+    vet_arquivo = abre_arquivo(str_nome_arquivo_populacao)
+    print("\nPopulação como chegou do import: {}".format(vet_arquivo))
+    dic_populacao = {}
+    for int_pos in range(1, len(vet_arquivo), 1):
+        vet_campos = vet_arquivo[int_pos].split(str_separador)
+        vet_campos[-1] = vet_campos[-1].replace("\n", "")       # Exclui o '\n' do ultimo campo
+        dic_populacao[vet_campos[0].replace("_", " ")] = int(vet_campos[1])
 
+    print("\nPopulação TRATADO: {}".format(dic_populacao))
+
+    # importa o CSV com os números de casos e de mortes por país
     str_nome_arquivo = "COVID-19-geographic-disbtribution-worldwide.csv"
     vet_schema = ["dateRep",
                   "day",
@@ -204,15 +230,6 @@ def main():
                   "CasosRefPopulacao",
                   "MortesRefCasos"]
 
-    # le o arquivo de tamanho da populaçã dos países
-    vet_arquivo = abre_arquivo(str_nome_arquivo)
-    dic_populacao = {}
-    for int_pos in range(1, len(vet_arquivo), 1):
-        vet_campos = vet_arquivo[int_pos].split(str_separador)
-        vet_campos[-1] = vet_campos[-1].replace("\n", "")       # Exclui o '\n' do ultimo campo
-        dic_populacao[vet_campos[0].replace("_", " ")] = int(vet_campos[1])
-
-    # importa o CSV com os números de casos e de mortes por país
     vet_arquivo = abre_arquivo(str_nome_arquivo)
     vet_numeros = []
     for int_pos in range(1, len(vet_arquivo), 1):
@@ -281,7 +298,6 @@ def main():
                 # tenta calcular a proporcao entre casos confirmados e a população do país
                 try:
                     flo_casos_ref_populacao = int_casos_acumulados / dic_paises[str_pais]["populacao"] * 100
-                    print("\nPaís: {}\nint_casos_acumulados: {}\ndic_paises[str_pais][populacao]: {}\ntotaliza: {}".format(str_pais, int_casos_acumulados, dic_paises[str_pais]["populacao"], flo_casos_ref_populacao))
                 except:
                     flo_casos_ref_populacao = 0.0
                     print("Erro de divisão de {} casos pela população de {}.\nCarregado valor zero para o país {} no {}º dia.".format(int_casos_acumulados, dic_paises[str_pais]["populacao"], str_pais, int_dias_100th))
@@ -289,7 +305,6 @@ def main():
                 # tenta calcular a proporcao entre mortes e casos confirmados
                 try:
                     flo_mortes_ref_casos = int_mortes_acumuladas / int_casos_acumulados * 100
-                    print("\nPaís: {}\nint_mortes_acumuladas: {}\nint_casos_acumulados: {}\ntotaliza: {}".format(str_pais, int_mortes_acumuladas, int_casos_acumulados, flo_mortes_ref_casos))
                 except:
                     flo_mortes_ref_casos = 0.0
                     print("Erro de divisão de {} mortes por {} casos.\nCarregado valor zero para o país {} no {}º dia.".format(int_mortes_acumuladas, int_casos_acumulados, str_pais, int_dias_100th))
