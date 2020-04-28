@@ -4,14 +4,10 @@
 __author__ = "Claudio Jorge Severo Medeiro"
 __email__ = "cjinfo@gmail.com"
 """   
-    TODO: revisar gráfico de casos ref população
     TODO: importar direto do XLSX
-    TODO: Plotar 04 visões na mesma tela
-    TODO: Ordenar legenda por números de casos no dia X
     TODO: Criar linhas de tendência global, top-3 e país de foco do estudo
     TODO: Permitir usuário escolher país e dias de corte (inicial e final), inclusive a partir de quantos casos 
     de um mesmo país deseja avaliar
-    TODO: Ordenar os países por maior volume no mesmo dia que o país de referência está       
 """
 
 import tkinter      # precisa importar esta biblioteca senão não apresenta
@@ -26,8 +22,9 @@ vet_dias_plotar = []
 int_dias_pais_referencia = 0
 int_dias_plotar = 15
 int_qtde_casos_considerar = 100     # TODO: atualmente o default é considerar apenas a partir do dia com 100 casos no país,
-                                    # mas o objetivo é permitir que o operador escolha também esse número
+                                    #  mas o objetivo é permitir que o operador escolha também esse número
 
+# (INI) Bloco de métodos ainda não usado, que vai projetar os números para X dias adiante
 def somar_vetor(vet_somar):
     """
     Dado um vetor de valores numéricos, retorna a soma desses valores
@@ -53,10 +50,24 @@ def calcula_media(vet_calcular):
     return(flo_media)
 
 
-# def calcula_media_movel_exponencial(vet_calcular, int_fator):
-#    flo_mme = 0
-#    if int_fator < len(vet_calcular):
-#        # TODO: continuar daqui
+def calcula_media_movel_exponencial(vet_valores, int_periodo):
+    """
+    Método para cálculo de Média Móvel Exponencial de 'período' = int_periodo
+    """
+    vet_mme = []
+    if len(vet_valores) > int_periodo:
+        # calcula média simples dos valores do primeiro período
+        for int_cont in range(1, int_periodo + 1):
+            vet_mme.append(calcula_media(vet_valores[:int_cont]))
+
+        # calcula média móvel daqui pra frente
+        flo_k = 2 / (int_periodo + 1)
+        for int_cont in range(int_periodo, len(vet_valores)):
+            flo_mme = vet_mme[int_cont - 1] + (flo_k * (vet_valores[int_cont] - vet_mme[int_cont - 1]))
+            vet_mme.append(flo_mme)
+
+    return (vet_mme)
+# (FIM) Bloco de métodos ainda não usado, que vai projetar os números para X dias adiante
 
 
 def plotar_graficos(int_dimensao=1, str_pais_referencia="Brazil", int_dia_depois_do_100th=-1):
@@ -70,7 +81,7 @@ def plotar_graficos(int_dimensao=1, str_pais_referencia="Brazil", int_dia_depois
     
     global dic_paises
     global int_dias_plotar
-    global vet_paises_considerar, vet_dias_plotar, int_dias_pais_referencia # TODO: apagar depois
+    global vet_paises_considerar, vet_dias_plotar, int_dias_pais_referencia
 
     vet_simbolos = ['.', ',', 'o', 'v', '^', '<', '>', '1', '2', '3', '4', '8', 's', 'p', 'P', '*', 'h', 'H', '+', 'x', 'X', 'D', 'd', '|']
 
@@ -119,7 +130,6 @@ def plotar_graficos(int_dimensao=1, str_pais_referencia="Brazil", int_dia_depois
 
     # TODO: Pensar dinamismo para declarar número de dimensões
     fig, axs = matplotlib.pyplot.subplots(2, 2)
-    # fig, axs = matplotlib.pyplot.subplots(int_dimensoes, sharex=True)      # Só o de baixo vai relacionar o eixo X (dias desde marca do Nth)
     matplotlib.pyplot.suptitle("País de Referência: {} (últimos {} dias)".format(str_pais_referencia, int_dias_plotar))
 
     int_cont_linhas = 0
@@ -131,8 +141,7 @@ def plotar_graficos(int_dimensao=1, str_pais_referencia="Brazil", int_dia_depois
         axs[int_cont_linhas, int_cont_colunas].grid(which='minor', linestyle=':', linewidth='0.5', color='black')
 
         for int_cont in range(len(vet_plotar[int_cont_plotar])):
-            # TODO: avaliar modo de tornar a qtde de dias a serem plotadas dinâmica, e tratar quando qtde disponível menor
-            # plotando apenas os últimos 15 dias
+            # plotando apenas os últimos X (15) dias
             axs[int_cont_linhas, int_cont_colunas].plot(vet_dias_plotar[-int_dias_plotar:], vet_plotar[int_cont_plotar][int_cont][-int_dias_plotar:], marker=vet_simbolos_plotar[int_cont])
 
         # Só plota legenda no primeiro
@@ -225,7 +234,7 @@ def main():
     """
     Coordena a importação dos arquivos e os coloca em estruturas de dicionários a serem utilizados na plotagem
     """
-    global dic_paises  # TODO: avaliar apagar depois
+    global dic_paises
     global int_qtde_casos_considerar
     global str_separador
 
@@ -233,14 +242,11 @@ def main():
     str_nome_arquivo_populacao = "world_population_20200405.csv"
     vet_schema_populacao = ["countriesAndTerritories", "Populacao"]
     vet_arquivo = abre_arquivo(str_nome_arquivo_populacao)
-    # print("\nPopulação como chegou do import: {}".format(vet_arquivo))
     dic_populacao = {}
     for int_pos in range(1, len(vet_arquivo), 1):
         vet_campos = vet_arquivo[int_pos].split(str_separador)
         vet_campos[-1] = vet_campos[-1].replace("\n", "")       # Exclui o '\n' do ultimo campo
         dic_populacao[vet_campos[0].replace("_", " ")] = int(vet_campos[1])
-
-    # print("\nPopulação TRATADO: {}".format(dic_populacao))
 
     # importa o CSV com os números de casos e de mortes por país
     str_nome_arquivo = "COVID-19-geographic-disbtribution-worldwide.csv"
@@ -305,7 +311,6 @@ def main():
             # se a população não é identificada, é carregada como 0
             try:
                 int_populacao = dic_populacao[str_pais]
-                # int_populacao = int(vet_numero[-3].replace(".", ""))
             except:
                 int_populacao = 0
 
