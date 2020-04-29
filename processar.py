@@ -11,6 +11,7 @@ __email__ = "cjinfo@gmail.com"
 """
 
 import tkinter      # precisa importar esta biblioteca senão não apresenta
+from time import sleep
 import matplotlib
 matplotlib.use('TkAgg')
 
@@ -21,6 +22,8 @@ vet_paises_considerar = []
 vet_dias_plotar = []
 int_dias_pais_referencia = 0
 int_dias_plotar = 15
+str_pais_referencia = "Brazil"
+int_periodo = 5     # períodos padrões para a MME
 int_qtde_casos_considerar = 100     # TODO: atualmente o default é considerar apenas a partir do dia com 100 casos no país,
                                     #  mas o objetivo é permitir que o operador escolha também esse número
 
@@ -70,7 +73,7 @@ def calcula_media_movel_exponencial(vet_valores, int_periodo):
 # (FIM) Bloco de métodos ainda não usado, que vai projetar os números para X dias adiante
 
 
-def plotar_graficos(int_dimensao=1, str_pais_referencia="Brazil", int_dia_depois_do_100th=-1):
+def plotar_graficos(int_dimensao=1, int_dia_depois_do_100th=-1):
     """
     Dimensões possíveis:
     1: "CasosAcumulados"
@@ -82,9 +85,12 @@ def plotar_graficos(int_dimensao=1, str_pais_referencia="Brazil", int_dia_depois
     global dic_paises
     global int_dias_plotar
     global vet_paises_considerar, vet_dias_plotar, int_dias_pais_referencia
+    global str_pais_referencia
+    global int_periodo
 
     vet_simbolos = ['.', ',', 'o', 'v', '^', '<', '>', '1', '2', '3', '4', '8', 's', 'p', 'P', '*', 'h', 'H', '+', 'x', 'X', 'D', 'd', '|']
 
+    vet_formato_linha_plotar = []
     vet_simbolos_plotar = []        # vai garantir que o país tenha o mesmo símbolo em todos os subplots
     vet_plotar = [[], [], [], []]   # vai armazenar as listas de valores de y de cada país a ser exibido no gráfico
     vet_paises_considerar = []      # relação dos países que serão plotados
@@ -111,18 +117,31 @@ def plotar_graficos(int_dimensao=1, str_pais_referencia="Brazil", int_dia_depois
         # só vai plotar países que tem mais ou a mesma quantidade de dias indicados no país de referência
         if len(dic_paises[str_pais]["valores"]) >= int_dias_pais_referencia:
             # só vai plotar países que no dia ref ao último da série histórica do dia de referência, tinham a mesma quantidade de casos ou mais
+            print("str_pais: {}".format(str_pais))
             if dic_paises[str_pais]["valores"][int_dias_pais_referencia - 1] >= dic_paises[str_pais_referencia]["valores"][int_dias_pais_referencia - 1]:
                 vet_paises_considerar.append(str_pais)
-                vet_valores_plotar = retorna_coluna_matriz(dic_paises[str_pais]["valores"][:int_dias_pais_referencia], int_dimensao)
+
+                # vet_valores_plotar = retorna_coluna_matriz(dic_paises[str_pais]["valores"][:int_dias_pais_referencia], int_dimensao)
+                vet_formato_linha_plotar.append("solid")
                 vet_simbolos_plotar.append(vet_simbolos[0])
                 vet_simbolos.append(vet_simbolos[0])
                 vet_simbolos.pop(0)
+
+                # se é o país de referência, acrescenta as características da linha da MME dele
+                if str_pais == str_pais_referencia:
+                    vet_paises_considerar.append("{} (MME {} dias)".format(str_pais, int_periodo))
+                    vet_simbolos_plotar.append(vet_simbolos_plotar[-1])
+                    vet_formato_linha_plotar.append("dotted")
 
                 for int_cont_plotar in range(int_dimensoes):
                     vet_valores_plotar = retorna_coluna_matriz(
                         dic_paises[str_pais]["valores"][:int_dias_pais_referencia], int_cont_plotar+1)
 
                     vet_plotar[int_cont_plotar].append(vet_valores_plotar)
+
+                    # se é o país de referência, acrescenta o cálculo da MME dele
+                    if str_pais == str_pais_referencia:
+                        vet_plotar[int_cont_plotar].append(calcula_media_movel_exponencial(vet_valores_plotar, int_periodo))
 
                 # rotaciona os símbolos
                 vet_simbolos.append(vet_simbolos[0])
@@ -142,7 +161,7 @@ def plotar_graficos(int_dimensao=1, str_pais_referencia="Brazil", int_dia_depois
 
         for int_cont in range(len(vet_plotar[int_cont_plotar])):
             # plotando apenas os últimos X (15) dias
-            axs[int_cont_linhas, int_cont_colunas].plot(vet_dias_plotar[-int_dias_plotar:], vet_plotar[int_cont_plotar][int_cont][-int_dias_plotar:], marker=vet_simbolos_plotar[int_cont])
+            axs[int_cont_linhas, int_cont_colunas].plot(vet_dias_plotar[-int_dias_plotar:], vet_plotar[int_cont_plotar][int_cont][-int_dias_plotar:], marker=vet_simbolos_plotar[int_cont], linestyle=vet_formato_linha_plotar[int_cont])
 
         # Só plota legenda no primeiro
         if int_cont_linhas + int_cont_colunas == 0:
@@ -236,7 +255,8 @@ def main():
     """
     global dic_paises
     global int_qtde_casos_considerar
-    global str_separador
+    global str_separador, str_pais_referencia
+    global int_periodo
 
     # le o arquivo de tamanho da população dos países
     str_nome_arquivo_populacao = "world_population_20200405.csv"
