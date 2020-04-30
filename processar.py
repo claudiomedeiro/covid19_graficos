@@ -21,13 +21,30 @@ str_separador = ";"
 vet_paises_considerar = []
 vet_dias_plotar = []
 int_dias_pais_referencia = 0
-int_dias_plotar = 15
+int_dias_plotar = 10
 str_pais_referencia = "Brazil"
-int_periodo = 5     # períodos padrões para a MME
+int_periodo = 5                     # períodos padrões para a MME
+int_valores_projetar = 7            # valores a serem projetados à frente no país de referência
 int_qtde_casos_considerar = 100     # TODO: atualmente o default é considerar apenas a partir do dia com 100 casos no país,
                                     #  mas o objetivo é permitir que o operador escolha também esse número
 
-# (INI) Bloco de métodos ainda não usado, que vai projetar os números para X dias adiante
+
+def compara_proporcao(vet_interesse, vet_para_comparar):
+    # print("compara_proporcao({}, {})".format(vet_interesse, vet_para_comparar))
+    # sleep(10)
+    """
+    Dados 02 vetores, compara proporção entre eles
+    """
+    vet_retorno = []
+    for int_cont in range(len(vet_interesse)):
+        if float(vet_interesse[int_cont]) != 0 and float(vet_para_comparar[int_cont]) != 0:
+            vet_retorno.append(float(vet_interesse[int_cont]) / float(vet_para_comparar[int_cont]))
+        else:
+            vet_retorno.append(0)
+
+    return(vet_retorno)
+
+
 def somar_vetor(vet_somar):
     """
     Dado um vetor de valores numéricos, retorna a soma desses valores
@@ -70,7 +87,22 @@ def calcula_media_movel_exponencial(vet_valores, int_periodo):
             vet_mme.append(flo_mme)
 
     return (vet_mme)
-# (FIM) Bloco de métodos ainda não usado, que vai projetar os números para X dias adiante
+
+
+def cria_valores_projetados(vet_valores, in_valores_projetar):
+    """
+    Dada uma lista de valores e um indicador de quantidade, calcula a tendência dos valores da lista, pela MME e
+    adiciona os 'in_valores_projetar' ao final da lista
+    """
+
+    global int_periodo
+    vet_comparado = [1] + compara_proporcao(vet_valores[1:], vet_valores)
+    vet_mme = calcula_media_movel_exponencial(vet_comparado, int_periodo)
+
+    for int_cont in range(in_valores_projetar):
+        vet_valores.append(vet_valores[-1] * vet_mme[-1])
+
+    return(vet_valores)
 
 
 def plotar_graficos(int_dimensao=1, int_dia_depois_do_100th=-1):
@@ -86,7 +118,7 @@ def plotar_graficos(int_dimensao=1, int_dia_depois_do_100th=-1):
     global int_dias_plotar
     global vet_paises_considerar, vet_dias_plotar, int_dias_pais_referencia
     global str_pais_referencia
-    global int_periodo
+    global int_periodo, int_valores_projetar
 
     vet_simbolos = ['.', ',', 'o', 'v', '^', '<', '>', '1', '2', '3', '4', '8', 's', 'p', 'P', '*', 'h', 'H', '+', 'x', 'X', 'D', 'd', '|']
 
@@ -111,17 +143,16 @@ def plotar_graficos(int_dimensao=1, int_dia_depois_do_100th=-1):
     else:
         print("Considerando o último dia apurado para o país '{}'".format(str_pais_referencia))
 
-    vet_dias_plotar = retorna_coluna_matriz(dic_paises[str_pais_referencia]["valores"], 0)[:int_dias_pais_referencia]
+    # vet_dias_plotar = retorna_coluna_matriz(dic_paises[str_pais_referencia]["valores"], 0)[:int_dias_pais_referencia + int_valores_projetar]
+    vet_dias_plotar = list(range(1, int_dias_pais_referencia + int_valores_projetar + 1))
 
     for str_pais in dic_paises.keys():
-        # só vai plotar países que tem mais ou a mesma quantidade de dias indicados no país de referência
-        if len(dic_paises[str_pais]["valores"]) >= int_dias_pais_referencia:
+        # só vai plotar países que tem mais ou a mesma quantidade de dias indicados no país de referência mais os dias a serem projetados, ou o próprio país de referência
+        if ((len(dic_paises[str_pais]["valores"]) >= (int_dias_pais_referencia + int_valores_projetar)) and (str_pais != str_pais_referencia)) or (str_pais == str_pais_referencia):
             # só vai plotar países que no dia ref ao último da série histórica do dia de referência, tinham a mesma quantidade de casos ou mais
             print("str_pais: {}".format(str_pais))
             if dic_paises[str_pais]["valores"][int_dias_pais_referencia - 1] >= dic_paises[str_pais_referencia]["valores"][int_dias_pais_referencia - 1]:
                 vet_paises_considerar.append(str_pais)
-
-                # vet_valores_plotar = retorna_coluna_matriz(dic_paises[str_pais]["valores"][:int_dias_pais_referencia], int_dimensao)
                 vet_formato_linha_plotar.append("solid")
                 vet_simbolos_plotar.append(vet_simbolos[0])
                 vet_simbolos.append(vet_simbolos[0])
@@ -129,19 +160,20 @@ def plotar_graficos(int_dimensao=1, int_dia_depois_do_100th=-1):
 
                 # se é o país de referência, acrescenta as características da linha da MME dele
                 if str_pais == str_pais_referencia:
-                    vet_paises_considerar.append("{} (MME {} dias)".format(str_pais, int_periodo))
+                    vet_paises_considerar.append("{} (Projetado {} dias)".format(str_pais, int_valores_projetar))
                     vet_simbolos_plotar.append(vet_simbolos_plotar[-1])
                     vet_formato_linha_plotar.append("dotted")
 
                 for int_cont_plotar in range(int_dimensoes):
                     vet_valores_plotar = retorna_coluna_matriz(
-                        dic_paises[str_pais]["valores"][:int_dias_pais_referencia], int_cont_plotar+1)
+                        # dic_paises[str_pais]["valores"][:int_dias_pais_referencia], int_cont_plotar+1)
+                        dic_paises[str_pais]["valores"][:int_dias_pais_referencia + int_valores_projetar], int_cont_plotar + 1)
 
                     vet_plotar[int_cont_plotar].append(vet_valores_plotar)
 
                     # se é o país de referência, acrescenta o cálculo da MME dele
                     if str_pais == str_pais_referencia:
-                        vet_plotar[int_cont_plotar].append(calcula_media_movel_exponencial(vet_valores_plotar, int_periodo))
+                        vet_plotar[int_cont_plotar].append(cria_valores_projetados(vet_plotar[int_cont_plotar][0], int_valores_projetar))
 
                 # rotaciona os símbolos
                 vet_simbolos.append(vet_simbolos[0])
@@ -149,7 +181,7 @@ def plotar_graficos(int_dimensao=1, int_dia_depois_do_100th=-1):
 
     # TODO: Pensar dinamismo para declarar número de dimensões
     fig, axs = matplotlib.pyplot.subplots(2, 2)
-    matplotlib.pyplot.suptitle("País de Referência: {} (últimos {} dias)".format(str_pais_referencia, int_dias_plotar))
+    matplotlib.pyplot.suptitle("País de Referência: {} (últimos {} dias + {} projetados)".format(str_pais_referencia, int_dias_plotar, int_valores_projetar))
 
     int_cont_linhas = 0
     int_cont_colunas = 0
@@ -162,6 +194,13 @@ def plotar_graficos(int_dimensao=1, int_dia_depois_do_100th=-1):
         for int_cont in range(len(vet_plotar[int_cont_plotar])):
             # plotando apenas os últimos X (15) dias
             axs[int_cont_linhas, int_cont_colunas].plot(vet_dias_plotar[-int_dias_plotar:], vet_plotar[int_cont_plotar][int_cont][-int_dias_plotar:], marker=vet_simbolos_plotar[int_cont], linestyle=vet_formato_linha_plotar[int_cont])
+            # print("len(vet_dias_plotar): {}".format(len(vet_dias_plotar)))
+            # print("len(vet_plotar[int_cont_plotar][int_cont]): {}".format(len(vet_plotar[int_cont_plotar][int_cont])))
+
+            # axs[int_cont_linhas, int_cont_colunas].plot(vet_dias_plotar,
+            #                                         vet_plotar[int_cont_plotar][int_cont],
+            #                                         marker=vet_simbolos_plotar[int_cont],
+            #                                         linestyle=vet_formato_linha_plotar[int_cont])
 
         # Só plota legenda no primeiro
         if int_cont_linhas + int_cont_colunas == 0:
