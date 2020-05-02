@@ -30,8 +30,6 @@ int_qtde_casos_considerar = 100     # TODO: atualmente o default é considerar a
 
 
 def compara_proporcao(vet_interesse, vet_para_comparar):
-    # print("compara_proporcao({}, {})".format(vet_interesse, vet_para_comparar))
-    # sleep(10)
     """
     Dados 02 vetores, compara proporção entre eles
     """
@@ -171,8 +169,9 @@ def plotar_graficos(int_dimensao=1, int_dia_depois_do_100th=-1):
 
                     vet_plotar[int_cont_plotar].append(vet_valores_plotar)
 
-                    # se é o país de referência, acrescenta o cálculo da MME dele
+                    # se é o país de referência, acrescenta projeções em relação a ele mesmo
                     if str_pais == str_pais_referencia:
+                        # TODO: avaliar criar esse projetado a partir de um loop dos reais, traçando uma reta não coincidente com o realizado
                         vet_plotar[int_cont_plotar].append(cria_valores_projetados(vet_plotar[int_cont_plotar][0], int_valores_projetar))
 
                 # rotaciona os símbolos
@@ -193,7 +192,7 @@ def plotar_graficos(int_dimensao=1, int_dia_depois_do_100th=-1):
 
         for int_cont in range(len(vet_plotar[int_cont_plotar])):
             # plotando apenas os últimos X (15) dias
-            axs[int_cont_linhas, int_cont_colunas].plot(vet_dias_plotar[-int_dias_plotar:], vet_plotar[int_cont_plotar][int_cont][-int_dias_plotar:], marker=vet_simbolos_plotar[int_cont], linestyle=vet_formato_linha_plotar[int_cont])
+            axs[int_cont_linhas, int_cont_colunas].plot(vet_dias_plotar[-(int_dias_plotar+int_valores_projetar):], vet_plotar[int_cont_plotar][int_cont][-(int_dias_plotar+int_valores_projetar):], marker=vet_simbolos_plotar[int_cont], linestyle=vet_formato_linha_plotar[int_cont])
             # print("len(vet_dias_plotar): {}".format(len(vet_dias_plotar)))
             # print("len(vet_plotar[int_cont_plotar][int_cont]): {}".format(len(vet_plotar[int_cont_plotar][int_cont])))
 
