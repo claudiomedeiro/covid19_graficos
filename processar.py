@@ -21,7 +21,7 @@ str_separador = ";"
 vet_paises_considerar = []
 vet_dias_plotar = []
 int_dias_pais_referencia = 0
-int_dias_plotar = 10
+int_dias_plotar = 8
 str_pais_referencia = "Brazil"
 int_periodo = 5                     # períodos padrões para a MME
 int_valores_projetar = 7            # valores a serem projetados à frente no país de referência
@@ -171,8 +171,29 @@ def plotar_graficos(int_dimensao=1, int_dia_depois_do_100th=-1):
 
                     # se é o país de referência, acrescenta projeções em relação a ele mesmo
                     if str_pais == str_pais_referencia:
-                        # TODO: avaliar criar esse projetado a partir de um loop dos reais, traçando uma reta não coincidente com o realizado
-                        vet_plotar[int_cont_plotar].append(cria_valores_projetados(vet_plotar[int_cont_plotar][0], int_valores_projetar))
+                        print("str_pais: {}".format(str_pais))
+                        print("vet_plotar[int_cont_plotar][0]: {}".format(vet_plotar[int_cont_plotar][0]))
+
+                        # preenche as posições iniciais do projetado com vazios
+                        vet_aux = []
+                        for int_contagem in range(len(vet_plotar[int_cont_plotar][0])):
+                            vet_aux.append(None)
+
+                        vet_aux += cria_valores_projetados(vet_plotar[int_cont_plotar][0], int_valores_projetar)[-7:]
+                        vet_aux_tira = vet_plotar[int_cont_plotar][-1]
+                        for int_contagem in range(int_valores_projetar-1):
+                            vet_aux_tira[-(int_contagem+1)] = None
+
+                        vet_plotar[int_cont_plotar][-1] = vet_aux_tira
+
+                        # print("vet_aux: {}".format(vet_aux))
+                        print("-> ANTES vet_plotar[{}]: {}".format(int_cont_plotar, vet_plotar[int_cont_plotar][-1]))
+                        # sleep(15)
+
+                        vet_plotar[int_cont_plotar].append(vet_aux)
+                        # vet_plotar[int_cont_plotar].append(cria_valores_projetados(vet_plotar[int_cont_plotar][0], int_valores_projetar))
+                        print("-> DEPOIS vet_plotar[{}]: {}".format(int_cont_plotar, vet_plotar[int_cont_plotar][-1]))
+
 
                 # rotaciona os símbolos
                 vet_simbolos.append(vet_simbolos[0])
