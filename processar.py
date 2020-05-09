@@ -8,12 +8,16 @@ __email__ = "cjinfo@gmail.com"
     TODO: Criar linhas de tendência global, top-3 e país de foco do estudo
     TODO: Permitir usuário escolher país e dias de corte (inicial e final), inclusive a partir de quantos casos 
     de um mesmo país deseja avaliar
+    TODO: alterar para exibir sempre os 10+ e o país de referência, na ordem em que estão (colocar ordem no nome da legenda)
 """
-
+import xlrd         # para manipular planilhas excel
 import tkinter      # precisa importar esta biblioteca senão não apresenta
 from time import sleep
+from datetime import datetime
+
 import matplotlib
 matplotlib.use('TkAgg')
+
 
 dic_paises = {}
 dic_populacao = {}
@@ -248,7 +252,7 @@ def retorna_coluna_matriz(vet_matriz, int_coluna):
     return([x[int_coluna] for x in vet_matriz])
 
 
-def abre_arquivo(str_arquivo):
+def abre_arquivo_csv(str_arquivo):
     """
     Recebe o nome do arquivo, abre-o, e coloca em um vetor em que cada
     posição é uma linha.
@@ -276,6 +280,66 @@ def abre_arquivo(str_arquivo):
     return vet_linhas
 
 
+
+def abre_planilha(str_arquivo="COVID-19-geographic-disbtribution-worldwide-2020-05-08.xlsx"):
+    """
+    Recebe o nome do arquivo, abre-o, e coloca em um vetor em que cada
+    posição é uma linha.
+
+    :param str_arquivo: Nome do .csv que deverá ser importado
+    :return vet_linhas: Lista contendo cada linha do arquivo de entrada em uma posição, e o último elemento de cada
+    posição tem um '\n' que depois precisa ser tirado em cada processo específico
+
+    TODO: Já retirar o '\n' aqui e devolver só os dados de interesse
+    """
+    workbook = xlrd.open_workbook(str_arquivo)
+    worksheet = workbook.sheet_by_name("COVID-19-geographic-disbtributi")
+    # worksheet = workbook.sheet_by_index(0)
+
+    vet_linhas = []
+    for int_cont_rows in range(1, worksheet.nrows):
+        vet_valores = []
+        for int_cont_cols in range(worksheet.ncols):
+            # Se for campo de data converte para formato YYYY-MM-DD
+            if worksheet.row(int_cont_rows)[int_cont_cols].ctype == 3:
+                flo_valor = worksheet.row(int_cont_rows)[int_cont_cols].value
+                wrongValue = flo_valor
+                workbook_datemode = workbook.datemode
+                tup_data = xlrd.xldate_as_tuple(wrongValue, workbook_datemode)
+                str_valor = datetime(tup_data[0], tup_data[1], tup_data[2])
+                str_valor = "{}".format(str_valor)
+            else:
+                str_valor = worksheet.row(int_cont_rows)[int_cont_cols].value
+
+            vet_valores.append(str_valor)
+
+            # *****
+            # vet_valores.append(worksheet.row(int_cont_rows)[int_cont_cols].value)
+
+        vet_linhas.append(vet_valores)
+
+    return(vet_linhas)
+
+
+
+    # str_arquivo = str(str_arquivo)
+    # vet_linhas = []
+    #
+    # try:
+    #     with open(str_arquivo, 'r') as fil_arquivo:
+    #         vet_linhas = fil_arquivo.readlines()
+    #         fil_arquivo.close()
+    #
+    # except IOError:
+    #     # TODO: Implementar o método 'grava_log' e transformar todos os prints de controle em entradas de log
+    #     # grava_log(("ERRO", "Problemas ao tentar ler o arquivo '" + str_arquivo + "'"))
+    #     print(("ERRO: Problemas ao tentar ler o arquivo '{}'".format(str_arquivo)))
+    #
+    # return vet_linhas
+
+
+
+
 def simbolos_a_esquerda(str_texto, int_tamanho, str_simbolo="0"):
     """
     Recebe um texto, e o devolve no tamanho indicado, preenchido com o símbolo indicado à esquerda
@@ -291,21 +355,22 @@ def simbolos_a_esquerda(str_texto, int_tamanho, str_simbolo="0"):
     return(str_texto_com_simbolos_a_esquerda)
 
 
-def converte_data(str_data_a_converter):
-    """
-    Data uma data no formato D/M/AAAA, converte em data formato AAAA-MM-DD
-    :param str_data_a_converter: uma data em algum dos formatos 'D/M/AA', 'D/M/AAAA' ou 'DD/MM/AAAA'
-    :return str_data_convertida: Data convertida para o formato 'AAAA-MM-DD'
-
-    >>> converte_data("18/4/2020")
-    '2020-04-18'
-    """
-    vet_data_convertida = str_data_a_converter.split("/")
-    str_dia = simbolos_a_esquerda(vet_data_convertida[0], 2)
-    str_mes = simbolos_a_esquerda(vet_data_convertida[1], 2)
-    str_ano = vet_data_convertida[2]
-    str_data_convertida = str_ano + "-" + str_mes + "-" + str_dia
-    return(str_data_convertida)
+# def converte_data(str_data_a_converter):
+#     """
+#     Data uma data no formato D/M/AAAA, converte em data formato AAAA-MM-DD
+#     :param str_data_a_converter: uma data em algum dos formatos 'D/M/AA', 'D/M/AAAA' ou 'DD/MM/AAAA'
+#     :return str_data_convertida: Data convertida para o formato 'AAAA-MM-DD'
+#
+#     >>> converte_data("18/4/2020")
+#     '2020-04-18'
+#     """
+#     print("\nconverte_data({})".format(str_data_a_converter))
+#     vet_data_convertida = str_data_a_converter.split("/")
+#     str_dia = simbolos_a_esquerda(vet_data_convertida[0], 2)
+#     str_mes = simbolos_a_esquerda(vet_data_convertida[1], 2)
+#     str_ano = vet_data_convertida[2]
+#     str_data_convertida = str_ano + "-" + str_mes + "-" + str_dia
+#     return(str_data_convertida)
 
 
 def main():
@@ -319,8 +384,9 @@ def main():
 
     # le o arquivo de tamanho da população dos países
     str_nome_arquivo_populacao = "world_population_20200405.csv"
-    vet_schema_populacao = ["countriesAndTerritories", "Populacao"]
-    vet_arquivo = abre_arquivo(str_nome_arquivo_populacao)
+    # vet_schema_populacao = ["countriesAndTerritories", "Populacao"]
+    # TODO: usar o campo 'popData2018' da própria planilha de casos, ao invés da específica
+    vet_arquivo = abre_arquivo_csv(str_nome_arquivo_populacao)
     dic_populacao = {}
     for int_pos in range(1, len(vet_arquivo), 1):
         vet_campos = vet_arquivo[int_pos].split(str_separador)
@@ -328,32 +394,45 @@ def main():
         dic_populacao[vet_campos[0].replace("_", " ")] = int(vet_campos[1])
 
     # importa o CSV com os números de casos e de mortes por país
-    str_nome_arquivo = "COVID-19-geographic-disbtribution-worldwide.csv"
-    vet_schema = ["dateRep",
-                  "day",
-                  "month",
-                  "year",
-                  "cases",
-                  "deaths",
-                  "countriesAndTerritories",
-                  "geoId",
-                  "countryterritoryCode",
-                  "popData2018",
-                  "DataNumerica",
-                  "CasosAcumulados",
-                  "MortesAcumuladas",
-                  "DiasDesdeCaso100",
-                  "Populacao",
-                  "CasosRefPopulacao",
-                  "MortesRefCasos"]
+    # str_nome_arquivo = "COVID-19-geographic-disbtribution-worldwide.csv"
+    # TODO: definir nome dinamicamente
+    # TODO: fazer download automaticamente tentando da data mais recente pra trás até achar um
+    str_nome_arquivo = "COVID-19-geographic-disbtribution-worldwide-2020-05-08.xlsx"
+    # vet_schema = ["dateRep",
+    #               "day",
+    #               "month",
+    #               "year",
+    #               "cases",
+    #               "deaths",
+    #               "countriesAndTerritories",
+    #               "geoId",
+    #               "countryterritoryCode",
+    #               "popData2018",
+    #               "DataNumerica",
+    #               "CasosAcumulados",
+    #               "MortesAcumuladas",
+    #               "DiasDesdeCaso100",
+    #               "Populacao",
+    #               "CasosRefPopulacao",
+    #               "MortesRefCasos"]
 
-    vet_arquivo = abre_arquivo(str_nome_arquivo)
-    vet_numeros = []
-    for int_pos in range(1, len(vet_arquivo), 1):
-        vet_campos = vet_arquivo[int_pos].split(str_separador)
-        vet_campos[-1] = vet_campos[-1].replace("\n", "")  # Exclui o '\n' do ultimo campo
-        vet_campos[0] = converte_data(vet_campos[0])  # Converte data no formato 'AAAA-MM-DD' para uso futuro
-        vet_numeros.append(vet_campos)
+    vet_numeros = abre_planilha(str_nome_arquivo)
+    # print("vet_numeros[1:5]")
+    # vet_numeros = []
+    # for int_row in range(1, len(vet_numeros)):
+    #     print("\nvet_numeros[int_row]: {}".format(vet_numeros[int_row]))
+    #     print("vet_numeros[int_row][0]: {}".format(vet_numeros[int_row][0]))
+    #
+    #     vet_numeros[int_row][0] = date.fromordinal(int(vet_numeros[int_row][0])+1899).strftime("%Y-%m-%d")
+    #     print("vet_numeros[int_row][0]: {}".format(vet_numeros[int_row][0]))
+
+    # vet_arquivo = abre_arquivo_csv(str_nome_arquivo)
+    # vet_numeros = []
+    # for int_pos in range(1, len(vet_arquivo), 1):
+    #     vet_campos = vet_arquivo[int_pos].split(str_separador)
+    #     vet_campos[-1] = vet_campos[-1].replace("\n", "")  # Exclui o '\n' do ultimo campo
+    #     vet_campos[0] = converte_data(vet_campos[0])  # Converte data no formato 'AAAA-MM-DD' para uso futuro
+    #     vet_numeros.append(vet_campos)
 
     # estrutura do dic_paises
     # dic_paises = {
