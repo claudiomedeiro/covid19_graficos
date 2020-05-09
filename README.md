@@ -25,3 +25,10 @@ Os seguintes países não consta população então foi feita uma pesquisa indiv
 
 necessário instalar o tk e fazer o import
 $ sudo apt-get install python3-tk
+
+# "Tecnologias" utilizadas no script
+- Download automático de um arquivo, a partir de URL definida
+- Plotagem de gráfico de linha usando o MatPlotLib
+- Trabalhando com datas utilizando o strftime
+- Leitura de arquivos XLS
+- Leitura de arquivos CSV

@@ -10,6 +10,8 @@ __email__ = "cjinfo@gmail.com"
     de um mesmo país deseja avaliar
     TODO: alterar para exibir sempre os 10+ e o país de referência, na ordem em que estão (colocar ordem no nome da legenda)
 """
+from requests import get        # precisa instalar o pacote:  >>> pip install requests
+from os import listdir
 import xlrd         # para manipular planilhas excel
 import tkinter      # precisa importar esta biblioteca senão não apresenta
 from time import sleep
@@ -31,6 +33,37 @@ int_periodo = 5                     # períodos padrões para a MME
 int_valores_projetar = 7            # valores a serem projetados à frente no país de referência
 int_qtde_casos_considerar = 100     # TODO: atualmente o default é considerar apenas a partir do dia com 100 casos no país,
                                     #  mas o objetivo é permitir que o operador escolha também esse número
+
+
+def download_planilha():
+    """
+    Faz download da planilha mais recente com os dados
+    """
+    str_data = datetime.now().strftime("%Y-%m-%d")
+    str_url = "https://www.ecdc.europa.eu/sites/default/files/documents/"
+    str_arquivo = "COVID-19-geographic-disbtribution-worldwide-{}.xlsx".format(str_data)
+
+    if str_arquivo not in listdir("./"):
+        try:
+            filedata = get("{}{}".format(str_url, str_arquivo))
+            filedata.content
+            datatowrite = filedata.content
+            with open(str_arquivo, "wb") as f:
+                f.write(datatowrite)
+
+            # for str_arquivoDiretorio in listdir("."):
+            #     if str_arquivoDiretorio == str_arquivo:
+            #             move(str_arquivo, "./" + cria_diretorio("extratos") + str_arquivo)
+        except:
+            str_mensagem = "Nao foi possivel baixar o arquivo '{}' e sera necessario baixalo na mao, com o seguinte comando: 'wget {}{}'".format(str_arquivo, str_url, str_arquivo)
+            # grava_log(("ERRO", str_mensagem))
+
+    else:
+        str_mensagem = "O arquivo '{}' já EXISTE e NÃO será necessário fazer download.".format(str_arquivo)
+        # grava_log(("info", str_mensagem))
+
+    return(str_arquivo)
+
 
 
 def compara_proporcao(vet_interesse, vet_para_comparar):
@@ -280,21 +313,16 @@ def abre_arquivo_csv(str_arquivo):
     return vet_linhas
 
 
-
-def abre_planilha(str_arquivo="COVID-19-geographic-disbtribution-worldwide-2020-05-08.xlsx"):
+def abre_planilha():
     """
-    Recebe o nome do arquivo, abre-o, e coloca em um vetor em que cada
+    Converte os dados da planilha mais atual, em uma lista bidimensional, em que cada
     posição é uma linha.
 
-    :param str_arquivo: Nome do .csv que deverá ser importado
-    :return vet_linhas: Lista contendo cada linha do arquivo de entrada em uma posição, e o último elemento de cada
-    posição tem um '\n' que depois precisa ser tirado em cada processo específico
-
-    TODO: Já retirar o '\n' aqui e devolver só os dados de interesse
+    :return vet_linhas: Lista contendo cada linha do arquivo de entrada em uma posição
     """
+    str_arquivo = download_planilha()
     workbook = xlrd.open_workbook(str_arquivo)
     worksheet = workbook.sheet_by_name("COVID-19-geographic-disbtributi")
-    # worksheet = workbook.sheet_by_index(0)
 
     vet_linhas = []
     for int_cont_rows in range(1, worksheet.nrows):
@@ -313,31 +341,9 @@ def abre_planilha(str_arquivo="COVID-19-geographic-disbtribution-worldwide-2020-
 
             vet_valores.append(str_valor)
 
-            # *****
-            # vet_valores.append(worksheet.row(int_cont_rows)[int_cont_cols].value)
-
         vet_linhas.append(vet_valores)
 
     return(vet_linhas)
-
-
-
-    # str_arquivo = str(str_arquivo)
-    # vet_linhas = []
-    #
-    # try:
-    #     with open(str_arquivo, 'r') as fil_arquivo:
-    #         vet_linhas = fil_arquivo.readlines()
-    #         fil_arquivo.close()
-    #
-    # except IOError:
-    #     # TODO: Implementar o método 'grava_log' e transformar todos os prints de controle em entradas de log
-    #     # grava_log(("ERRO", "Problemas ao tentar ler o arquivo '" + str_arquivo + "'"))
-    #     print(("ERRO: Problemas ao tentar ler o arquivo '{}'".format(str_arquivo)))
-    #
-    # return vet_linhas
-
-
 
 
 def simbolos_a_esquerda(str_texto, int_tamanho, str_simbolo="0"):
@@ -353,24 +359,6 @@ def simbolos_a_esquerda(str_texto, int_tamanho, str_simbolo="0"):
     """
     str_texto_com_simbolos_a_esquerda = ((int_tamanho - len(str_texto)) * str_simbolo) + str_texto
     return(str_texto_com_simbolos_a_esquerda)
-
-
-# def converte_data(str_data_a_converter):
-#     """
-#     Data uma data no formato D/M/AAAA, converte em data formato AAAA-MM-DD
-#     :param str_data_a_converter: uma data em algum dos formatos 'D/M/AA', 'D/M/AAAA' ou 'DD/MM/AAAA'
-#     :return str_data_convertida: Data convertida para o formato 'AAAA-MM-DD'
-#
-#     >>> converte_data("18/4/2020")
-#     '2020-04-18'
-#     """
-#     print("\nconverte_data({})".format(str_data_a_converter))
-#     vet_data_convertida = str_data_a_converter.split("/")
-#     str_dia = simbolos_a_esquerda(vet_data_convertida[0], 2)
-#     str_mes = simbolos_a_esquerda(vet_data_convertida[1], 2)
-#     str_ano = vet_data_convertida[2]
-#     str_data_convertida = str_ano + "-" + str_mes + "-" + str_dia
-#     return(str_data_convertida)
 
 
 def main():
@@ -393,46 +381,8 @@ def main():
         vet_campos[-1] = vet_campos[-1].replace("\n", "")       # Exclui o '\n' do ultimo campo
         dic_populacao[vet_campos[0].replace("_", " ")] = int(vet_campos[1])
 
-    # importa o CSV com os números de casos e de mortes por país
-    # str_nome_arquivo = "COVID-19-geographic-disbtribution-worldwide.csv"
-    # TODO: definir nome dinamicamente
-    # TODO: fazer download automaticamente tentando da data mais recente pra trás até achar um
-    str_nome_arquivo = "COVID-19-geographic-disbtribution-worldwide-2020-05-08.xlsx"
-    # vet_schema = ["dateRep",
-    #               "day",
-    #               "month",
-    #               "year",
-    #               "cases",
-    #               "deaths",
-    #               "countriesAndTerritories",
-    #               "geoId",
-    #               "countryterritoryCode",
-    #               "popData2018",
-    #               "DataNumerica",
-    #               "CasosAcumulados",
-    #               "MortesAcumuladas",
-    #               "DiasDesdeCaso100",
-    #               "Populacao",
-    #               "CasosRefPopulacao",
-    #               "MortesRefCasos"]
-
-    vet_numeros = abre_planilha(str_nome_arquivo)
-    # print("vet_numeros[1:5]")
-    # vet_numeros = []
-    # for int_row in range(1, len(vet_numeros)):
-    #     print("\nvet_numeros[int_row]: {}".format(vet_numeros[int_row]))
-    #     print("vet_numeros[int_row][0]: {}".format(vet_numeros[int_row][0]))
-    #
-    #     vet_numeros[int_row][0] = date.fromordinal(int(vet_numeros[int_row][0])+1899).strftime("%Y-%m-%d")
-    #     print("vet_numeros[int_row][0]: {}".format(vet_numeros[int_row][0]))
-
-    # vet_arquivo = abre_arquivo_csv(str_nome_arquivo)
-    # vet_numeros = []
-    # for int_pos in range(1, len(vet_arquivo), 1):
-    #     vet_campos = vet_arquivo[int_pos].split(str_separador)
-    #     vet_campos[-1] = vet_campos[-1].replace("\n", "")  # Exclui o '\n' do ultimo campo
-    #     vet_campos[0] = converte_data(vet_campos[0])  # Converte data no formato 'AAAA-MM-DD' para uso futuro
-    #     vet_numeros.append(vet_campos)
+    # importa o XLS com os números de casos e de mortes por país
+    vet_numeros = abre_planilha()
 
     # estrutura do dic_paises
     # dic_paises = {
