@@ -4,7 +4,6 @@
 __author__ = "Claudio Jorge Severo Medeiro"
 __email__ = "cjinfo@gmail.com"
 """   
-    TODO: Criar linhas de tendência global, top-3 e país de foco do estudo
     TODO: Permitir usuário escolher país e dias de corte (inicial e final), inclusive a partir de quantos casos 
     de um mesmo país deseja avaliar
     TODO: alterar para exibir sempre os 10+ e o país de referência, na ordem em que estão (colocar ordem no nome da legenda)
@@ -13,7 +12,6 @@ from requests import get        # precisa instalar o pacote:  >>> pip install re
 from os import listdir
 import xlrd         # para manipular planilhas excel
 import tkinter      # precisa importar esta biblioteca senão não apresenta
-from time import sleep
 from datetime import datetime
 
 import matplotlib
@@ -156,7 +154,7 @@ def plotar_graficos(int_dimensao=1, int_dia_depois_do_100th=-1):
     vet_paises_considerar = []      # relação dos países que serão plotados
 
     vet_titulos_graficos = []
-    vet_titulos_graficos.append("Casos acumulados")
+    vet_titulos_graficos.append("Casos acumulados (milhares)")      # foi preciso transformar os números de casos em milhares porque Estados Unidos ultrapassou 01 milão e passou a dar erro no plot
     vet_titulos_graficos.append("Mortes acumuladas")
     vet_titulos_graficos.append("Casos em cada 100 mil habitantes")
     vet_titulos_graficos.append("Mortes em cada 100 mil habitantes")
@@ -217,15 +215,17 @@ def plotar_graficos(int_dimensao=1, int_dia_depois_do_100th=-1):
     fig, axs = matplotlib.pyplot.subplots(2, 2)
     matplotlib.pyplot.suptitle("País de Referência: {} (últimos {} dias + {} projetados)".format(str_pais_referencia, int_dias_plotar, int_valores_projetar))
 
+    int_qtde_plotar = -(int_dias_plotar + int_valores_projetar)
     int_cont_linhas = 0
     int_cont_colunas = 0
+
     for int_cont_dimensao in range(int_dimensoes):
         axs[int_cont_linhas, int_cont_colunas].set_title(vet_titulos_graficos[int_cont_dimensao])
         axs[int_cont_linhas, int_cont_colunas].grid(which='major', linestyle='-', linewidth='0.5', color='red')
         axs[int_cont_linhas, int_cont_colunas].minorticks_on()    # habilita o grid menor
         axs[int_cont_linhas, int_cont_colunas].grid(which='minor', linestyle=':', linewidth='0.5', color='black')
+        axs[int_cont_linhas, int_cont_colunas].yaxis.set_major_formatter(matplotlib.ticker.StrMethodFormatter('{x:,.0f}'))
 
-        int_qtde_plotar = -(int_dias_plotar + int_valores_projetar)
         vet_dias_plotar_realmente = vet_dias_plotar[int_qtde_plotar:]     # plotando apenas os últimos X (15) dias
 
         # na dimensão atual, pegar todos os vetores dos países plotáveis
@@ -242,7 +242,6 @@ def plotar_graficos(int_dimensao=1, int_dia_depois_do_100th=-1):
             int_cont_linhas += 1
             int_cont_colunas = 0
 
-    # TODO: Investigar o que tem de errado com os dados de maio, que gera erro no gráfico de casos acumulados
     matplotlib.pyplot.show()
     return
 
@@ -257,34 +256,6 @@ def retorna_coluna_matriz(vet_matriz, int_coluna):
     [2, 5, 8]
     """
     return([x[int_coluna] for x in vet_matriz])
-
-
-# def abre_arquivo_csv(str_arquivo):
-#     """
-#     Recebe o nome do arquivo, abre-o, e coloca em um vetor em que cada
-#     posição é uma linha.
-#
-#     :param str_arquivo: Nome do .csv que deverá ser importado
-#     :return vet_linhas: Lista contendo cada linha do arquivo de entrada em uma posição, e o último elemento de cada
-#     posição tem um '\n' que depois precisa ser tirado em cada processo específico
-#
-#     TODO: Já retirar o '\n' aqui e devolver só os dados de interesse
-#     """
-#
-#     str_arquivo = str(str_arquivo)
-#     vet_linhas = []
-#
-#     try:
-#         with open(str_arquivo, 'r') as fil_arquivo:
-#             vet_linhas = fil_arquivo.readlines()
-#             fil_arquivo.close()
-#
-#     except IOError:
-#         # TODO: Implementar o método 'grava_log' e transformar todos os prints de controle em entradas de log
-#         # grava_log(("ERRO", "Problemas ao tentar ler o arquivo '" + str_arquivo + "'"))
-#         print(("ERRO: Problemas ao tentar ler o arquivo '{}'".format(str_arquivo)))
-#
-#     return vet_linhas
 
 
 def abre_planilha():
@@ -417,7 +388,6 @@ def main():
                 # tenta calcular a proporcao entre casos confirmados e a população do país
                 try:
                     flo_casos_ref_populacao = int_casos_acumulados / dic_paises[str_pais]["populacao"] * 100000
-                    # flo_casos_ref_populacao = int_casos_acumulados #/ dic_paises[str_pais]["populacao"] * 100000
                 except:
                     flo_casos_ref_populacao = 0.0
                     print("Erro de divisão de {} casos pela população de {}.\nCarregado valor zero para o país {} no {}º dia.".format(int_casos_acumulados, dic_paises[str_pais]["populacao"], str_pais, int_dias_100th))
@@ -425,12 +395,11 @@ def main():
                 # tenta calcular a proporcao entre mortes e população
                 try:
                     flo_mortes_ref_populacao = int_mortes_acumuladas / dic_paises[str_pais]["populacao"] * 100000
-                    # flo_mortes_ref_populacao = int_mortes_acumuladas #/ dic_paises[str_pais]["populacao"] * 100000
                 except:
                     flo_mortes_ref_populacao = 0.0
                     print("Erro de divisão de {} mortes por {} casos.\nCarregado valor zero para o país {} no {}º dia.".format(int_mortes_acumuladas, int_casos_acumulados, str_pais, int_dias_100th))
 
-                dic_paises[str_pais]["valores"].append([int_dias_100th, int_casos_acumulados, int_mortes_acumuladas,
+                dic_paises[str_pais]["valores"].append([int_dias_100th, int_casos_acumulados / 1000, int_mortes_acumuladas,
                                                         flo_casos_ref_populacao, flo_mortes_ref_populacao, vet_aux[0]])
 
     plotar_graficos()   # chama o processo de plotagem com os valores padrões ("Brazil" e "casos acumulados")
