@@ -4,7 +4,6 @@
 __author__ = "Claudio Jorge Severo Medeiro"
 __email__ = "cjinfo@gmail.com"
 """   
-    TODO: importar direto do XLSX
     TODO: Criar linhas de tendência global, top-3 e país de foco do estudo
     TODO: Permitir usuário escolher país e dias de corte (inicial e final), inclusive a partir de quantos casos 
     de um mesmo país deseja avaliar
@@ -19,7 +18,6 @@ from datetime import datetime
 
 import matplotlib
 matplotlib.use('TkAgg')
-
 
 dic_paises = {}
 dic_populacao = {}
@@ -50,10 +48,6 @@ def download_planilha():
             datatowrite = filedata.content
             with open(str_arquivo, "wb") as f:
                 f.write(datatowrite)
-
-            # for str_arquivoDiretorio in listdir("."):
-            #     if str_arquivoDiretorio == str_arquivo:
-            #             move(str_arquivo, "./" + cria_diretorio("extratos") + str_arquivo)
         except:
             str_mensagem = "Nao foi possivel baixar o arquivo '{}' e sera necessario baixalo na mao, com o seguinte comando: 'wget {}{}'".format(str_arquivo, str_url, str_arquivo)
             # grava_log(("ERRO", str_mensagem))
@@ -63,7 +57,6 @@ def download_planilha():
         # grava_log(("info", str_mensagem))
 
     return(str_arquivo)
-
 
 
 def compara_proporcao(vet_interesse, vet_para_comparar):
@@ -178,14 +171,12 @@ def plotar_graficos(int_dimensao=1, int_dia_depois_do_100th=-1):
     else:
         print("Considerando o último dia apurado para o país '{}'".format(str_pais_referencia))
 
-    # vet_dias_plotar = retorna_coluna_matriz(dic_paises[str_pais_referencia]["valores"], 0)[:int_dias_pais_referencia + int_valores_projetar]
     vet_dias_plotar = list(range(1, int_dias_pais_referencia + int_valores_projetar + 1))
 
     for str_pais in dic_paises.keys():
         # só vai plotar países que tem mais ou a mesma quantidade de dias indicados no país de referência mais os dias a serem projetados, ou o próprio país de referência
         if ((len(dic_paises[str_pais]["valores"]) >= (int_dias_pais_referencia + int_valores_projetar)) and (str_pais != str_pais_referencia)) or (str_pais == str_pais_referencia):
             # só vai plotar países que no dia ref ao último da série histórica do dia de referência, tinham a mesma quantidade de casos ou mais
-            print("str_pais: {}".format(str_pais))
             if dic_paises[str_pais]["valores"][int_dias_pais_referencia - 1] >= dic_paises[str_pais_referencia]["valores"][int_dias_pais_referencia - 1]:
                 vet_paises_considerar.append(str_pais)
                 vet_formato_linha_plotar.append("solid")
@@ -199,38 +190,24 @@ def plotar_graficos(int_dimensao=1, int_dia_depois_do_100th=-1):
                     vet_simbolos_plotar.append(vet_simbolos_plotar[-1])
                     vet_formato_linha_plotar.append("dotted")
 
-                for int_cont_plotar in range(int_dimensoes):
-                    vet_valores_plotar = retorna_coluna_matriz(
-                        # dic_paises[str_pais]["valores"][:int_dias_pais_referencia], int_cont_plotar+1)
-                        dic_paises[str_pais]["valores"][:int_dias_pais_referencia + int_valores_projetar], int_cont_plotar + 1)
-
-                    vet_plotar[int_cont_plotar].append(vet_valores_plotar)
+                for int_cont_dimensao in range(int_dimensoes):
+                    vet_valores_plotar = retorna_coluna_matriz(dic_paises[str_pais]["valores"][:int_dias_pais_referencia + int_valores_projetar], int_cont_dimensao + 1)
+                    vet_plotar[int_cont_dimensao].append(vet_valores_plotar)
 
                     # se é o país de referência, acrescenta projeções em relação a ele mesmo
                     if str_pais == str_pais_referencia:
-                        print("str_pais: {}".format(str_pais))
-                        print("vet_plotar[int_cont_plotar][0]: {}".format(vet_plotar[int_cont_plotar][0]))
-
                         # preenche as posições iniciais do projetado com vazios
                         vet_aux = []
-                        for int_contagem in range(len(vet_plotar[int_cont_plotar][0])):
+                        for int_contagem in range(len(vet_plotar[int_cont_dimensao][0])):
                             vet_aux.append(None)
 
-                        vet_aux += cria_valores_projetados(vet_plotar[int_cont_plotar][0], int_valores_projetar)[-7:]
-                        vet_aux_tira = vet_plotar[int_cont_plotar][-1]
+                        vet_aux += cria_valores_projetados(vet_plotar[int_cont_dimensao][0], int_valores_projetar)[-7:]
+                        vet_aux_tira = vet_plotar[int_cont_dimensao][-1]
                         for int_contagem in range(int_valores_projetar-1):
                             vet_aux_tira[-(int_contagem+1)] = None
 
-                        vet_plotar[int_cont_plotar][-1] = vet_aux_tira
-
-                        # print("vet_aux: {}".format(vet_aux))
-                        print("-> ANTES vet_plotar[{}]: {}".format(int_cont_plotar, vet_plotar[int_cont_plotar][-1]))
-                        # sleep(15)
-
-                        vet_plotar[int_cont_plotar].append(vet_aux)
-                        # vet_plotar[int_cont_plotar].append(cria_valores_projetados(vet_plotar[int_cont_plotar][0], int_valores_projetar))
-                        print("-> DEPOIS vet_plotar[{}]: {}".format(int_cont_plotar, vet_plotar[int_cont_plotar][-1]))
-
+                        vet_plotar[int_cont_dimensao][-1] = vet_aux_tira
+                        vet_plotar[int_cont_dimensao].append(vet_aux)
 
                 # rotaciona os símbolos
                 vet_simbolos.append(vet_simbolos[0])
@@ -242,22 +219,19 @@ def plotar_graficos(int_dimensao=1, int_dia_depois_do_100th=-1):
 
     int_cont_linhas = 0
     int_cont_colunas = 0
-    for int_cont_plotar in range(int_dimensoes):
-        axs[int_cont_linhas, int_cont_colunas].set_title(vet_titulos_graficos[int_cont_plotar])
+    for int_cont_dimensao in range(int_dimensoes):
+        axs[int_cont_linhas, int_cont_colunas].set_title(vet_titulos_graficos[int_cont_dimensao])
         axs[int_cont_linhas, int_cont_colunas].grid(which='major', linestyle='-', linewidth='0.5', color='red')
         axs[int_cont_linhas, int_cont_colunas].minorticks_on()    # habilita o grid menor
         axs[int_cont_linhas, int_cont_colunas].grid(which='minor', linestyle=':', linewidth='0.5', color='black')
 
-        for int_cont in range(len(vet_plotar[int_cont_plotar])):
-            # plotando apenas os últimos X (15) dias
-            axs[int_cont_linhas, int_cont_colunas].plot(vet_dias_plotar[-(int_dias_plotar+int_valores_projetar):], vet_plotar[int_cont_plotar][int_cont][-(int_dias_plotar+int_valores_projetar):], marker=vet_simbolos_plotar[int_cont], linestyle=vet_formato_linha_plotar[int_cont])
-            # print("len(vet_dias_plotar): {}".format(len(vet_dias_plotar)))
-            # print("len(vet_plotar[int_cont_plotar][int_cont]): {}".format(len(vet_plotar[int_cont_plotar][int_cont])))
+        int_qtde_plotar = -(int_dias_plotar + int_valores_projetar)
+        vet_dias_plotar_realmente = vet_dias_plotar[int_qtde_plotar:]     # plotando apenas os últimos X (15) dias
 
-            # axs[int_cont_linhas, int_cont_colunas].plot(vet_dias_plotar,
-            #                                         vet_plotar[int_cont_plotar][int_cont],
-            #                                         marker=vet_simbolos_plotar[int_cont],
-            #                                         linestyle=vet_formato_linha_plotar[int_cont])
+        # na dimensão atual, pegar todos os vetores dos países plotáveis
+        for int_cont in range(len(vet_plotar[int_cont_dimensao])):
+            vet_plotar_realmente = vet_plotar[int_cont_dimensao][int_cont][int_qtde_plotar:]
+            axs[int_cont_linhas, int_cont_colunas].plot(vet_dias_plotar_realmente, vet_plotar_realmente, marker=vet_simbolos_plotar[int_cont], linestyle=vet_formato_linha_plotar[int_cont])
 
         # Só plota legenda no primeiro
         if int_cont_linhas + int_cont_colunas == 0:
@@ -268,8 +242,8 @@ def plotar_graficos(int_dimensao=1, int_dia_depois_do_100th=-1):
             int_cont_linhas += 1
             int_cont_colunas = 0
 
+    # TODO: Investigar o que tem de errado com os dados de maio, que gera erro no gráfico de casos acumulados
     matplotlib.pyplot.show()
-
     return
 
 
@@ -285,32 +259,32 @@ def retorna_coluna_matriz(vet_matriz, int_coluna):
     return([x[int_coluna] for x in vet_matriz])
 
 
-def abre_arquivo_csv(str_arquivo):
-    """
-    Recebe o nome do arquivo, abre-o, e coloca em um vetor em que cada
-    posição é uma linha.
-
-    :param str_arquivo: Nome do .csv que deverá ser importado
-    :return vet_linhas: Lista contendo cada linha do arquivo de entrada em uma posição, e o último elemento de cada
-    posição tem um '\n' que depois precisa ser tirado em cada processo específico
-
-    TODO: Já retirar o '\n' aqui e devolver só os dados de interesse
-    """
-
-    str_arquivo = str(str_arquivo)
-    vet_linhas = []
-
-    try:
-        with open(str_arquivo, 'r') as fil_arquivo:
-            vet_linhas = fil_arquivo.readlines()
-            fil_arquivo.close()
-
-    except IOError:
-        # TODO: Implementar o método 'grava_log' e transformar todos os prints de controle em entradas de log
-        # grava_log(("ERRO", "Problemas ao tentar ler o arquivo '" + str_arquivo + "'"))
-        print(("ERRO: Problemas ao tentar ler o arquivo '{}'".format(str_arquivo)))
-
-    return vet_linhas
+# def abre_arquivo_csv(str_arquivo):
+#     """
+#     Recebe o nome do arquivo, abre-o, e coloca em um vetor em que cada
+#     posição é uma linha.
+#
+#     :param str_arquivo: Nome do .csv que deverá ser importado
+#     :return vet_linhas: Lista contendo cada linha do arquivo de entrada em uma posição, e o último elemento de cada
+#     posição tem um '\n' que depois precisa ser tirado em cada processo específico
+#
+#     TODO: Já retirar o '\n' aqui e devolver só os dados de interesse
+#     """
+#
+#     str_arquivo = str(str_arquivo)
+#     vet_linhas = []
+#
+#     try:
+#         with open(str_arquivo, 'r') as fil_arquivo:
+#             vet_linhas = fil_arquivo.readlines()
+#             fil_arquivo.close()
+#
+#     except IOError:
+#         # TODO: Implementar o método 'grava_log' e transformar todos os prints de controle em entradas de log
+#         # grava_log(("ERRO", "Problemas ao tentar ler o arquivo '" + str_arquivo + "'"))
+#         print(("ERRO: Problemas ao tentar ler o arquivo '{}'".format(str_arquivo)))
+#
+#     return vet_linhas
 
 
 def abre_planilha():
@@ -328,7 +302,6 @@ def abre_planilha():
     for int_cont_rows in range(1, worksheet.nrows):
         vet_valores = []
         for int_cont_cols in range(worksheet.ncols):
-            # Se for campo de data converte para formato YYYY-MM-DD
             if worksheet.row(int_cont_rows)[int_cont_cols].ctype == 3:
                 flo_valor = worksheet.row(int_cont_rows)[int_cont_cols].value
                 wrongValue = flo_valor
@@ -370,19 +343,20 @@ def main():
     global str_separador, str_pais_referencia
     global int_periodo
 
-    # le o arquivo de tamanho da população dos países
-    str_nome_arquivo_populacao = "world_population_20200405.csv"
-    # vet_schema_populacao = ["countriesAndTerritories", "Populacao"]
-    # TODO: usar o campo 'popData2018' da própria planilha de casos, ao invés da específica
-    vet_arquivo = abre_arquivo_csv(str_nome_arquivo_populacao)
-    dic_populacao = {}
-    for int_pos in range(1, len(vet_arquivo), 1):
-        vet_campos = vet_arquivo[int_pos].split(str_separador)
-        vet_campos[-1] = vet_campos[-1].replace("\n", "")       # Exclui o '\n' do ultimo campo
-        dic_populacao[vet_campos[0].replace("_", " ")] = int(vet_campos[1])
-
     # importa o XLS com os números de casos e de mortes por país
     vet_numeros = abre_planilha()
+
+    # carrega dados de população em estrutura específica
+    for int_pos in range(len(vet_numeros)):
+        str_pais = vet_numeros[int_pos][6].replace("_", " ")
+
+        if str_pais not in dic_populacao.keys():
+            if vet_numeros[int_pos][9] == '':
+                int_valor = 0
+            else:
+                int_valor = int(vet_numeros[int_pos][9])
+
+            dic_populacao[str_pais] = int_valor
 
     # estrutura do dic_paises
     # dic_paises = {
@@ -443,6 +417,7 @@ def main():
                 # tenta calcular a proporcao entre casos confirmados e a população do país
                 try:
                     flo_casos_ref_populacao = int_casos_acumulados / dic_paises[str_pais]["populacao"] * 100000
+                    # flo_casos_ref_populacao = int_casos_acumulados #/ dic_paises[str_pais]["populacao"] * 100000
                 except:
                     flo_casos_ref_populacao = 0.0
                     print("Erro de divisão de {} casos pela população de {}.\nCarregado valor zero para o país {} no {}º dia.".format(int_casos_acumulados, dic_paises[str_pais]["populacao"], str_pais, int_dias_100th))
@@ -450,6 +425,7 @@ def main():
                 # tenta calcular a proporcao entre mortes e população
                 try:
                     flo_mortes_ref_populacao = int_mortes_acumuladas / dic_paises[str_pais]["populacao"] * 100000
+                    # flo_mortes_ref_populacao = int_mortes_acumuladas #/ dic_paises[str_pais]["populacao"] * 100000
                 except:
                     flo_mortes_ref_populacao = 0.0
                     print("Erro de divisão de {} mortes por {} casos.\nCarregado valor zero para o país {} no {}º dia.".format(int_mortes_acumuladas, int_casos_acumulados, str_pais, int_dias_100th))
