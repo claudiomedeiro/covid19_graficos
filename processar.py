@@ -174,8 +174,13 @@ def plotar_graficos(int_dimensao=1, int_dia_depois_do_100th=-1):
     for str_pais in dic_paises.keys():
         # só vai plotar países que tem mais ou a mesma quantidade de dias indicados no país de referência mais os dias a serem projetados, ou o próprio país de referência
         if ((len(dic_paises[str_pais]["valores"]) >= (int_dias_pais_referencia + int_valores_projetar)) and (str_pais != str_pais_referencia)) or (str_pais == str_pais_referencia):
-            # só vai plotar países que no dia ref ao último da série histórica do dia de referência, tinham a mesma quantidade de casos ou mais
-            if dic_paises[str_pais]["valores"][int_dias_pais_referencia - 1] >= dic_paises[str_pais_referencia]["valores"][int_dias_pais_referencia - 1]:
+
+            print("\ndic_paises[{}]['valores'][{}] {}".format(str_pais, int_dias_pais_referencia - 1, dic_paises[str_pais]["valores"][int_dias_pais_referencia - 1]))
+            print("dic_paises[{}]['valores'][{}]: {}".format(str_pais_referencia, int_dias_pais_referencia - 1, dic_paises[str_pais_referencia]["valores"][int_dias_pais_referencia - 1]))
+
+            # só vai plotar países que no dia ref ao último da série histórica do dia de referência, pelo menos 1/3 da quantidade de casos
+            if 3*dic_paises[str_pais]["valores"][int_dias_pais_referencia - 1][1] >= dic_paises[str_pais_referencia]["valores"][int_dias_pais_referencia - 1][1]:
+                print("ESSE VAI")
                 vet_paises_considerar.append(str_pais)
                 vet_formato_linha_plotar.append("solid")
                 vet_simbolos_plotar.append(vet_simbolos[0])
